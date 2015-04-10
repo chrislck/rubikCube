@@ -6,7 +6,7 @@ random.seed(0)
 
 # ordre arbitraire: on regarde les faces du cube dans l'ordre suivant: Up, Front, Left, Back, Right, (on revient frontside) Down
 # taille du cube va de 2 à 7 soit 294 autocollants
-class BaseCube(): 
+class BaseCube(object): 
 
     order =[ #UpFace   
             [ 0,150, 54, 24, 96,216, 1,
@@ -482,26 +482,29 @@ class BaseCube():
 
 #    random.seed(0)
 
+
+# calculate a random number where:  a <= rand < b
+def rand(a, b):
+    return (b-a)*random.random() + a
+
+# Make a matrix (we could use NumPy to speed this up)
+def makeMatrix(I, J, fill=0.0):
+    m = []
+    for i in range(I):
+        m.append([fill]*J)
+    return m
+
+# our sigmoid function, tanh is a little nicer than the standard 1/(1+e^-x)
+def sigmoid(x):
+    return math.tanh(x)
+
+# derivative of our sigmoid function, in terms of the output (i.e. y)
+def dsigmoid(y):
+    return 1.0 - y**2
+
+
 class NN():
 
-    # calculate a random number where:  a <= rand < b
-    def rand(a, b):
-        return (b-a)*random.random() + a
-    
-    # Make a matrix (we could use NumPy to speed this up)
-    def makeMatrix(I, J, fill=0.0):
-        m = []
-        for i in range(I):
-            m.append([fill]*J)
-        return m
-    
-    # our sigmoid function, tanh is a little nicer than the standard 1/(1+e^-x)
-    def sigmoid(x):
-        return math.tanh(x)
-    
-    # derivative of our sigmoid function, in terms of the output (i.e. y)
-    def dsigmoid(y):
-        return 1.0 - y**2
 
     def __init__(self, ni, nh, no):
         # number of input, hidden, and output nodes
