@@ -1,21 +1,192 @@
+import pickle
+
+# Back-Propagation Neural Networks
+# 
+# Written in Python.  See http://www.python.org/
+# Placed in the public domain.
+# Neil Schemenauer <nas@arctrix.com>
+
 import math
 import random
 import string
 
 random.seed(0)
 
+# calculate a random number where:  a <= rand < b
+def rand(a, b):
+    return (b-a)*random.random() + a
+
+# Make a matrix (we could use NumPy to speed this up)
+def makeMatrix(I, J, fill=0.0):
+    m = []
+    for i in range(I):
+        m.append([fill]*J)
+    return m
+
+# our sigmoid function, tanh is a little nicer than the standard 1/(1+e^-x)
+def sigmoid(x):
+    return math.tanh(x)
+
+# derivative of our sigmoid function, in terms of the output (i.e. y)
+def dsigmoid(y):
+    return 1.0 - y**2
+
+class NN:
+    def __init__(self, ni, nh, no):
+        # number of input, hidden, and output nodes
+        self.ni = ni + 1 # +1 for bias node
+        self.nh = nh
+        self.no = no
+
+        # activations for nodes
+        self.ai = [1.0]*self.ni
+        self.ah = [1.0]*self.nh
+        self.ao = [1.0]*self.no
+        
+        # create weights
+        self.wi = makeMatrix(self.ni, self.nh)
+        self.wo = makeMatrix(self.nh, self.no)
+        # set them to random vaules
+        for i in range(self.ni):
+            for j in range(self.nh):
+                self.wi[i][j] = rand(-0.2, 0.2)
+        for j in range(self.nh):
+            for k in range(self.no):
+                self.wo[j][k] = rand(-2.0, 2.0)
+
+        # last change in weights for momentum   
+        self.ci = makeMatrix(self.ni, self.nh)
+        self.co = makeMatrix(self.nh, self.no)
+
+    def update(self, inputs):
+        if len(inputs) != self.ni-1:
+            raise ValueError('wrong number of inputs')
+
+        # input activations
+        for i in range(self.ni-1):
+            #self.ai[i] = sigmoid(inputs[i])
+            self.ai[i] = inputs[i]
+
+        # hidden activations
+        for j in range(self.nh):
+            sum = 0.0
+            for i in range(self.ni):
+                sum = sum + self.ai[i] * self.wi[i][j]
+            self.ah[j] = sigmoid(sum)
+
+        # output activations
+        for k in range(self.no):
+            sum = 0.0
+            for j in range(self.nh):
+                sum = sum + self.ah[j] * self.wo[j][k]
+            self.ao[k] = sigmoid(sum)
+
+        return self.ao[:]
+
+
+    def backPropagate(self, targets, N, M):
+        if len(targets) != self.no:
+            raise ValueError('wrong number of target values')
+
+        # calculate error terms for output
+        output_deltas = [0.0] * self.no
+        for k in range(self.no):
+            error = targets[k]-self.ao[k]
+            output_deltas[k] = dsigmoid(self.ao[k]) * error
+
+        # calculate error terms for hidden
+        hidden_deltas = [0.0] * self.nh
+        for j in range(self.nh):
+            error = 0.0
+            for k in range(self.no):
+                error = error + output_deltas[k]*self.wo[j][k]
+            hidden_deltas[j] = dsigmoid(self.ah[j]) * error
+
+        # update output weights
+        for j in range(self.nh):
+            for k in range(self.no):
+                change = output_deltas[k]*self.ah[j]
+                self.wo[j][k] = self.wo[j][k] + N*change + M*self.co[j][k]
+                self.co[j][k] = change
+                #print N*change, M*self.co[j][k]
+
+        # update input weights
+        for i in range(self.ni):
+            for j in range(self.nh):
+                change = hidden_deltas[j]*self.ai[i]
+                self.wi[i][j] = self.wi[i][j] + N*change + M*self.ci[i][j]
+                self.ci[i][j] = change
+
+        # calculate error
+        error = 0.0
+        for k in range(len(targets)):
+            error = error + 0.5*(targets[k]-self.ao[k])**2
+        return error
+
+
+    def test(self, patterns):
+        for p in patterns:
+            print(p[0], '->', self.update(p[0]))
+
+    def weights(self):
+        print('Input weights:')
+        for i in range(self.ni):
+            print(self.wi[i])
+        print()
+        print('Output weights:')
+        for j in range(self.nh):
+            print(self.wo[j])
+
+    def train(self, patterns, iterations=1000, N=0.5, M=0.1):
+        # N: learning rate
+        # M: momentum factor
+        for i in range(iterations):
+            error = 0.0
+            for p in patterns:
+                inputs = p[0]
+                targets = p[1]
+                self.update(inputs)
+                error = error + self.backPropagate(targets, N, M)
+            if i % 100 == 0:
+                print('error %-.5f' % error)
+
+
+#def demo():
+#    # Teach network XOR function
+#    pat = [
+#        [[0,0], [0]],
+#        [[0,1], [1]],
+#        [[1,0], [1]],
+#        [[1,1], [0]]
+#    ]
+#
+#    # create a network with two input, two hidden, and one output nodes
+#    n = NN(2, 2, 1)
+#    # train it with some patterns
+#    n.train(pat)
+#    # test it
+#    n.test(pat)
+#
+#
+#
+#if __name__ == '__main__':
+#    demo()
+
+#fin de Back Propagation neural network
+
+
 # ordre arbitraire: on regarde les faces du cube dans l'ordre suivant: Up, Front, Left, Back, Right, (on revient frontside) Down
 # taille du cube va de 2 à 7 soit 294 autocollants
 class BaseCube(object): 
 
     order =[ #UpFace   
-            [ 0,150, 54, 24, 96,216, 1,
+            [ 0,150, 54, 24, 96,216,  1,
             151,174,175,176,177,238,152,
-            55,178, 78, 79,120,239, 56,
-            25,179, 80, 48,121,240, 26,
-            97,180,122,123,124,241, 98,
+             55,178, 78, 79,120,239, 56,
+             25,179, 80, 48,121,240, 26,
+             97,180,122,123,124,241, 98,
             217,242,243,244,245,246,218,
-            2,153, 57, 27, 99,219,  3],            
+              2,153, 57, 27, 99,219,  3],            
             #FrontFace  
             [4,154, 58, 28,100,220,  5,
             155,181,182,183,184,247,156,
@@ -364,33 +535,66 @@ class BaseCube(object):
                     ,[co,a1,a2,fco1,fa1,fco2]
                     ,[co,ace,a1,a2,fce,fco1,fco2,fa1,fa2,fa1ce]
                     ]
-                
+
+    (minsize,maxsize) = (2,7)                
 #size:     2 .. 7
 #sens:     0 .. 1
 #qty:      1 .. n
 #sublayer: 0 pour size=2 .. size DIV 2 
+
+#notations:
+#   Majuscule pour la rotation des couches extérieures
+#   minuscule pour LA premiere sous couche
+#   minuscule précédée d'un chiffre (2 ou 3) pour spécifier une autre sous couche
+#   Majuscule ou minuscule suivi de 1 ou plusieurs w pour désigner le nombre de sous couches à prendre en compte
+#   (') Prime pour désigner le sens inverse de la rotation
+#   (2) élevée au carré pour effectuer 2 fois la rotation ou le groupe de rotation pris entre parentheses
+
+#   1ere loi interne:   +
+#       A + B   =   
+#   2eme loi interne:   *
+#       A * B   =   
+    baseNbAretes = 4
+    nbFaces = 6
     rotations = ['U','F','L','B','R','D']
     couleurs=['B','R','W','O','Y','G']
     oppositions=[5,3,4,1,2,0]
     
-    def __init__(self,size=2,color=couleurs,facettes=[]):
+    def __init__(self,size=minsize,color=couleurs,facettes=[]):
         """ version 0.1 alpha par chrislck@free.fr """
-        if size <2:
-            self.size = 2
+        if size <BaseCube.minsize:
+            self.size = BaseCube.minsize
         else:
-            if size >7:
-                self.size = 7
+            if size >BaseCube.maxsize:
+                self.size = BaseCube.maxsize
             else:
                 self.size = size
         self.colors = color
-        self.facets =   [None] * self.size * self.size * 6
+        self.facets =   [None] * self.size * self.size * BaseCube.nbFaces
         if len(facettes) == len(self.facets):
             self.facets = facettes[:]
-        for i in range(6): # up front left back right down
+        for i in range(BaseCube.nbFaces): # up front left back right down
             for j in BaseCube.order[i]:
                 if j< len(self.facets):
                     self.facets[j] = i
+    
+    def saveTo(self,saveFileName):
+        try:
+            pickle.dump(self,open(saveFileName,"wb"))
+            return True
+        except:
+            return False
         
+    def loadFrom(self,loadFileName):
+        try:
+            tmp = pickle.load(open(loadFileName,"rb"))
+            if isinstance(tmp,ExtendedCube):
+                self = tmp
+                return True
+            return False
+        except: 
+            return False
+    
     def rotate(self,letter,wide=1,sublayer=0,sens=True,qty=1):            
 
         def permut(tab,sens=True):
@@ -400,15 +604,15 @@ class BaseCube(object):
                 for i in range(p):
                     tmp[i] = self.facets[tab[i][0]]
                 for i in range(p):
-                    for j in range(3):
+                    for j in range(BaseCube.baseNbAretes-1):
                         self.facets[tab[i][j]] = self.facets[tab[i][j+1]]
-                    self.facets[tab[i][3]] = tmp[i]
+                    self.facets[tab[i][BaseCube.baseNbAretes-1]] = tmp[i]
             else:
                 for i in range(p):
-                    tmp[i] = self.facets[tab[i][3]]
+                    tmp[i] = self.facets[tab[i][BaseCube.baseNbAretes-1]]
                 for i in range(p):
-                    for j in range(3):
-                        self.facets[tab[i][3-j]] = self.facets[tab[i][3-j-1]]
+                    for j in range(BaseCube.baseNbAretes-1):
+                        self.facets[tab[i][BaseCube.baseNbAretes-1-j]] = self.facets[tab[i][BaseCube.baseNbAretes-1-j-1]]
                     self.facets[tab[i][0]] = tmp[i]
                 
         def permutList(fg,letter,wide=1,sublayer=0):
@@ -426,16 +630,16 @@ class BaseCube(object):
         #  24 classes d'équivalence selon les rotations sur les 3 axes
         if issubclass(c,BaseCube):
             tmp = BaseCube(c.size,c.colors,c.facets)
-            for i in range(6):
-                for j in range(4):
+            for i in range(BaseCube.nbFaces):
+                for j in range(BaseCube.baseNbAretes):
                     if self.__str__().__eq__(tmp.__str__()):
                         return True
-                if i<3:
-                    tmp.rotateAll('Y')
-                elif i == 3:
-                    tmp.rotateAll('X')
-                elif i == 4:
-                    tmp.rotateAll('Y',True,2)
+                    if i<BaseCube.baseNbAretes-1:
+                        tmp.rotateAll('Y')
+                    elif i == BaseCube.baseNbAretes-1:
+                        tmp.rotateAll('X')
+                    elif i == BaseCube.baseNbAretes:
+                        tmp.rotateAll('Y',True,2)
             return False
         return NotImplemented
     
@@ -470,172 +674,6 @@ class BaseCube(object):
             rotate('U',(self.size // 2)+1,0,False)
             rotate('D',self.size // 2,0,True)            
 
-# Back-Propagation Neural Networks
-# 
-# Written in Python.  See http://www.python.org/
-# Placed in the public domain.
-# Neil Schemenauer <nas@arctrix.com>
-
-#    import math
-#    import random
-#    import string
-
-#    random.seed(0)
-
-
-# calculate a random number where:  a <= rand < b
-def rand(a, b):
-    return (b-a)*random.random() + a
-
-# Make a matrix (we could use NumPy to speed this up)
-def makeMatrix(I, J, fill=0.0):
-    m = []
-    for i in range(I):
-        m.append([fill]*J)
-    return m
-
-# our sigmoid function, tanh is a little nicer than the standard 1/(1+e^-x)
-def sigmoid(x):
-    return math.tanh(x)
-
-# derivative of our sigmoid function, in terms of the output (i.e. y)
-def dsigmoid(y):
-    return 1.0 - y**2
-
-
-class NN():
-
-
-    def __init__(self, ni, nh, no):
-        # number of input, hidden, and output nodes
-        self.ni = int(ni + 1) # +1 for bias node
-        self.nh = int(nh)
-        self.no = int(no)
-
-        # activations for nodes
-        self.ai = [1.0]*self.ni
-        self.ah = [1.0]*self.nh
-        self.ao = [1.0]*self.no
-        
-        # create weights
-        self.wi = makeMatrix(self.ni, self.nh)
-        self.wo = makeMatrix(self.nh, self.no)
-        # set them to random vaules
-        for i in range(self.ni):
-            for j in range(self.nh):
-                self.wi[i][j] = rand(-0.2, 0.2)
-        for j in range(self.nh):
-            for k in range(self.no):
-                self.wo[j][k] = rand(-2.0, 2.0)
-
-        # last change in weights for momentum   
-        self.ci = makeMatrix(self.ni, self.nh)
-        self.co = makeMatrix(self.nh, self.no)
-
-    def update(self, inputs):
-        if len(inputs) != self.ni-1:
-            raise ValueError('wrong number of inputs')
-
-        # input activations
-        for i in range(self.ni-1):
-            #self.ai[i] = sigmoid(inputs[i])
-            self.ai[i] = inputs[i]
-
-        # hidden activations
-        for j in range(self.nh):
-            sum = 0.0
-            for i in range(self.ni):
-                sum = sum + self.ai[i] * self.wi[i][j]
-            self.ah[j] = sigmoid(sum)
-
-        # output activations
-        for k in range(self.no):
-            sum = 0.0
-            for j in range(self.nh):
-                sum = sum + self.ah[j] * self.wo[j][k]
-            self.ao[k] = sigmoid(sum)
-
-        return self.ao[:]
-
-    def backPropagate(self, targets, N, M):
-        if len(targets) != self.no:
-            raise ValueError('wrong number of target values')
-
-        # calculate error terms for output
-        output_deltas = [0.0] * self.no
-        for k in range(self.no):
-            error = targets[k]-self.ao[k]
-            output_deltas[k] = dsigmoid(self.ao[k]) * error
-
-        # calculate error terms for hidden
-        hidden_deltas = [0.0] * self.nh
-        for j in range(self.nh):
-            error = 0.0
-            for k in range(self.no):
-                error = error + output_deltas[k]*self.wo[j][k]
-            hidden_deltas[j] = dsigmoid(self.ah[j]) * error
-
-        # update output weights
-        for j in range(self.nh):
-            for k in range(self.no):
-                change = output_deltas[k]*self.ah[j]
-                self.wo[j][k] = self.wo[j][k] + N*change + M*self.co[j][k]
-                self.co[j][k] = change
-                #print N*change, M*self.co[j][k]
-
-        # update input weights
-        for i in range(self.ni):
-            for j in range(self.nh):
-                change = hidden_deltas[j]*self.ai[i]
-                self.wi[i][j] = self.wi[i][j] + N*change + M*self.ci[i][j]
-                self.ci[i][j] = change
-
-        # calculate error
-        error = 0.0
-        for k in range(len(targets)):
-            error = error + 0.5*(targets[k]-self.ao[k])**2
-        return error
-
-    def test(self, patterns):
-        for p in patterns:
-            print(p[0], '->', self.update(p[0]))
-
-    def weights(self):
-        print('Input weights:')
-        for i in range(self.ni):
-            print(self.wi[i])
-        print()
-        print('Output weights:')
-        for j in range(self.nh):
-            print(self.wo[j])
-
-    def train(self, patterns, iterations=1000, N=0.5, M=0.1):
-        # N: learning rate
-        # M: momentum factor
-        for i in range(iterations):
-            error = 0.0
-            for p in patterns:
-                inputs = p[0]
-                targets = p[1]
-                self.update(inputs)
-                error = error + self.backPropagate(targets, N, M)
-            if i % 100 == 0:
-                print('error %-.5f' % error)
-# end of NN code
-        
-class ExtendedCube(BaseCube):
-
-    def __init__(self,size=2,colors=BaseCube.couleurs,facettes=[]):
-        super(ExtendedCube,self).__init__(size,colors,facettes)
-        self.history = []
-        nbn = self.size*self.size*6*4   #4 bits, 3 pour coder les 7 couleurs (6 couleurs + & couleur nulle) et 1 bit pour dire si c'est la bonne couleur ou non
-        self.neunet = NN(nbn,2*nbn,8)
-        self.trainingList = []
-        
-    def rotate(self,letter,wide=1,sublayer=0,sens=True,qty=1):
-        super().rotate(letter,wide,sublayer,sens,qty)
-        self.history.append([(letter,wide,sublayer,sens,qty)])
-        
     def validColorMorphList(self):
         result = []
         tmp1 = self.colors[:]
@@ -658,27 +696,92 @@ class ExtendedCube(BaseCube):
         return result
     
     def isColorMorph(self,c=None):
-        #  24 permutations de couleurs : meme forme à une ou plusieurs permutations de couleurs près
-        if issubclass(c,BaseCube):
-            for l in self.validColorMorphList:
-                tmp = BaseCube(self.size,self.colors,l)
-                if self.__eq__(tmp):
-                    return True
-            return False
+        #  48 permutations de couleurs : meme forme à une ou plusieurs permutations de couleurs près
+        if c <> None:
+            if issubclass(c,BaseCube):
+                for l in self.validColorMorphList:
+                    tmp = BaseCube(self.size,self.colors,l)
+                    if self.__eq__(tmp):
+                        return True
+        return False
+
+    def affiche(self,outputScreen=True):
+        (m,n) = (self.size*3,self.size*4)
+        result = []
+        for i in range(m):
+            result.append([' ']*n)        
+        for i in range(m):
+            for j in range(n):
+                (offsetX,delayX) = divmod(i,self.size)
+                (offsetY,delayY) = divmod(j,self.size)
+                if i < self.size:
+                    if self.size * 2 < j <= self.size *3:
+                        result[i][j-3] = BaseCube.couleurs[self.facets[delayX + delayY * self.size]]
+                elif self.size <= i < self.size *2:
+                        result[i][j] = BaseCube.couleurs[self.facets[(offsetX+offsetY) * self.size * self.size + delayX + delayY * self.size]]
+                else:
+                    if self.size * 2 +1< j <= self.size *3+1:
+                        result[i][j-4] = BaseCube.couleurs[self.facets[(offsetX+offsetY) * self.size * self.size + delayX + delayY * self.size]]
+        if outputScreen:
+            for p in result:
+                print(' '.join(p))
+        return result
+
+    def applySequence(self,seq):
+        pass
+        
+class ExtendedCube(BaseCube):
+
+    def __init__(self,size=BaseCube.minsize,colors=BaseCube.couleurs,facettes=[],nn=None,ni=4):
+        """Extension avec historique et memorisation perceptron"""
+#ni: 3bits pour les couleurs, 1 bit pour préciser bien placé ou non
+        super(ExtendedCube,self).__init__(size,colors,facettes)
+        if nn <> None:
+            if issubclass(nn,NN):
+                self.neunet = nn
+        else:
+            nbn = self.size*self.size*BaseCube.nbFaces*ni 
+            self.neunet = NN(nbn,2*nbn,8)
+        self.trainingList = []            
+        self.patternTraining = []
+        self.history = []
+
+    def rotate(self,letter,wide=1,sublayer=0,sens=True,qty=1):
+        super(BaseCube,self).rotate(letter,wide,sublayer,sens,qty)
+        self.history.append([(letter,wide,sublayer,sens,qty)])
 
     def setGoalAndTrain(self):
+        pass
         
+    def moveBackRandom(self):
+        pass    
         # random nb rotations (20-50)
         # random axe (1-6)
         # random size and sublayers (1-4) (0-3)
         # random sens and quantité (true/False) (1-2)
-        
+
         pass
     
 if __name__ == "__main__":
     a = BaseCube()
     b = ExtendedCube(3)
-
+#    a.saveTo("cube2")
+#    b.saveTo("cube3")
+#    a.loadFrom("cube2")
+#    b.loadFrom("cube3")
+    a.affiche()
+    a.rotate('R')
+    print
+    print('turn R')
+    a.affiche()
+    a.rotate('U')
+    print
+    print('turn U')
+    a.affiche()
+    a.rotate('F')
+    print
+    print('turn F')
+    a.affiche()
 
 
        
