@@ -665,14 +665,14 @@ class BaseCube(object):
 
     def rotateAll(self,letter,sens=True,qty=1):
         if   letter =='X':
-            rotate('R',(self.size // 2)+1,0,False)
-            rotate('L',self.size // 2,0,True)
+            rotate('R',(self.size // 2)+1,0,sens)
+            rotate('L',self.size // 2,0,not sens)
         elif letter =='Y':
-            rotate('F',(self.size // 2)+1,0,False)
-            rotate('B',self.size // 2,0,True)            
+            rotate('F',(self.size // 2)+1,0,not sens)
+            rotate('B',self.size // 2,0,sens)            
         elif letter =='Z':
-            rotate('U',(self.size // 2)+1,0,False)
-            rotate('D',self.size // 2,0,True)            
+            rotate('U',(self.size // 2)+1,0,not sens)
+            rotate('D',self.size // 2,0,sens)            
 
     def validColorMorphList(self):
         result = []
