@@ -174,6 +174,24 @@ class NN:
 
 #fin de Back Propagation neural network
 
+def shift(formule,rotAllTheCube,qty=1):
+	def permut(a,p):
+		b = ''
+		for i in range(len(a)):
+			try: 
+				b = b + p[p.index(a[i])+1]
+			except:
+				b = b + a[i]
+		return b		
+	newForm = formule
+	for t in range(qty):
+		if rotAllTheCube == 'X':
+			newForm = permut(newForm,'FUBD')
+		elif rotAllTheCube == 'Y':
+			newForm = permut(newForm,'RULD')
+		elif rotAllTheCube == 'Z':
+			newForm = permut(newForm,'FRBL')
+	return newForm
 
 # ordre arbitraire: on regarde les faces du cube dans l'ordre suivant: Up, Front, Left, Back, Right, (on revient frontside) Down
 # taille du cube va de 2 à 7 soit 294 autocollants
