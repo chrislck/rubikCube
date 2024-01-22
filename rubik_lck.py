@@ -715,7 +715,7 @@ class BaseCube(object):
     
     def isColorMorph(self,c=None):
         #  48 permutations de couleurs : meme forme à une ou plusieurs permutations de couleurs près
-        if c <> None:
+        if c != None:
             if issubclass(c,BaseCube):
                 for l in self.validColorMorphList:
                     tmp = BaseCube(self.size,self.colors,l)
@@ -754,7 +754,7 @@ class ExtendedCube(BaseCube):
         """Extension avec historique et memorisation perceptron"""
 #ni: 3bits pour les couleurs, 1 bit pour préciser bien placé ou non
         super(ExtendedCube,self).__init__(size,colors,facettes)
-        if nn <> None:
+        if nn != None:
             if issubclass(nn,NN):
                 self.neunet = nn
         else:
